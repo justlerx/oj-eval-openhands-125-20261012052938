@@ -3,6 +3,12 @@
 #include <unordered_map>
 using namespace std;
 
+struct CustomHash {
+    size_t operator()(const long long& key) const {
+        return key ^ (key >> 32);
+    }
+};
+
 class UnionFind {
 private:
     vector<int> parent;
@@ -56,14 +62,11 @@ int main() {
         int n;
         scanf("%d", &n);
         
-        vector<Constraint> equality_constraints;
-        vector<Constraint> inequality_constraints;
-        equality_constraints.reserve(n);
-        inequality_constraints.reserve(n);
+        vector<Constraint> constraints;
+        constraints.reserve(n);
         
-        unordered_map<long long, int> id_map;
-        vector<pair<long long, long long>> variables;
-        variables.reserve(n * 2);
+        unordered_map<long long, int, CustomHash> id_map;
+        id_map.reserve(n * 2);
         int next_id = 0;
         
         // Read all constraints and collect unique variables
@@ -75,38 +78,33 @@ int main() {
             auto it_i = id_map.find(i);
             if (it_i == id_map.end()) {
                 id_map[i] = next_id++;
-                variables.emplace_back(i, next_id - 1);
             }
             
             auto it_j = id_map.find(j);
             if (it_j == id_map.end()) {
                 id_map[j] = next_id++;
-                variables.emplace_back(j, next_id - 1);
             }
             
-            int id_i = id_map[i];
-            int id_j = id_map[j];
-            
-            if (e == 1) {
-                equality_constraints.push_back({id_i, id_j, e});
-            } else {
-                inequality_constraints.push_back({id_i, id_j, e});
-            }
+            constraints.push_back({id_map[i], id_map[j], e});
         }
         
         UnionFind uf(next_id);
         
         // Process equality constraints first
-        for (const auto& constraint : equality_constraints) {
-            uf.unite(constraint.i, constraint.j);
+        for (const auto& constraint : constraints) {
+            if (constraint.e == 1) {
+                uf.unite(constraint.i, constraint.j);
+            }
         }
         
         // Check inequality constraints
         bool possible = true;
-        for (const auto& constraint : inequality_constraints) {
-            if (uf.connected(constraint.i, constraint.j)) {
-                possible = false;
-                break;
+        for (const auto& constraint : constraints) {
+            if (constraint.e == 0) {
+                if (uf.connected(constraint.i, constraint.j)) {
+                    possible = false;
+                    break;
+                }
             }
         }
         
