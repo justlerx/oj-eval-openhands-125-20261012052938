@@ -21,7 +21,7 @@ public:
         }
     }
     
-    int find(int x) {
+    inline int find(int x) {
         while (parent[x] != x) {
             parent[x] = parent[parent[x]]; // Path compression
             x = parent[x];
@@ -29,7 +29,7 @@ public:
         return x;
     }
     
-    void unite(int x, int y) {
+    inline void unite(int x, int y) {
         int rootX = find(x);
         int rootY = find(y);
         
@@ -45,7 +45,7 @@ public:
         }
     }
     
-    bool connected(int x, int y) {
+    inline bool connected(int x, int y) {
         return find(x) == find(y);
     }
 };
@@ -75,17 +75,24 @@ int main() {
             int e;
             scanf("%lld %lld %d", &i, &j, &e);
             
+            int id_i, id_j;
             auto it_i = id_map.find(i);
             if (it_i == id_map.end()) {
-                id_map[i] = next_id++;
+                id_i = next_id++;
+                id_map[i] = id_i;
+            } else {
+                id_i = it_i->second;
             }
             
             auto it_j = id_map.find(j);
             if (it_j == id_map.end()) {
-                id_map[j] = next_id++;
+                id_j = next_id++;
+                id_map[j] = id_j;
+            } else {
+                id_j = it_j->second;
             }
             
-            constraints.push_back({id_map[i], id_map[j], e});
+            constraints.push_back({id_i, id_j, e});
         }
         
         UnionFind uf(next_id);
