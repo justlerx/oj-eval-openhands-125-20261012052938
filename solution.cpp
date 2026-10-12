@@ -1,30 +1,26 @@
-#include <iostream>
+#include <cstdio>
 #include <vector>
 #include <unordered_map>
-#include <algorithm>
 using namespace std;
 
 class UnionFind {
 private:
     vector<int> parent;
-    vector<int> rank;
+    vector<int> size;
     
 public:
-    UnionFind() {}
-    
-    void resize(int size) {
-        parent.resize(size);
-        rank.resize(size, 0);
-        for (int i = 0; i < size; i++) {
+    UnionFind(int n) : parent(n), size(n, 1) {
+        for (int i = 0; i < n; i++) {
             parent[i] = i;
         }
     }
     
     int find(int x) {
-        if (parent[x] != x) {
-            parent[x] = find(parent[x]);
+        while (parent[x] != x) {
+            parent[x] = parent[parent[x]]; // Path compression
+            x = parent[x];
         }
-        return parent[x];
+        return x;
     }
     
     void unite(int x, int y) {
@@ -33,13 +29,13 @@ public:
         
         if (rootX == rootY) return;
         
-        if (rank[rootX] < rank[rootY]) {
+        // Union by size
+        if (size[rootX] < size[rootY]) {
             parent[rootX] = rootY;
-        } else if (rank[rootX] > rank[rootY]) {
-            parent[rootY] = rootX;
+            size[rootY] += size[rootX];
         } else {
             parent[rootY] = rootX;
-            rank[rootX]++;
+            size[rootX] += size[rootY];
         }
     }
     
@@ -53,9 +49,6 @@ struct Constraint {
 };
 
 int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-    
     int t;
     scanf("%d", &t);
     
@@ -63,10 +56,14 @@ int main() {
         int n;
         scanf("%d", &n);
         
-        vector<Constraint> constraints;
-        constraints.reserve(n);
+        vector<Constraint> equality_constraints;
+        vector<Constraint> inequality_constraints;
+        equality_constraints.reserve(n);
+        inequality_constraints.reserve(n);
         
         unordered_map<long long, int> id_map;
+        vector<pair<long long, long long>> variables;
+        variables.reserve(n * 2);
         int next_id = 0;
         
         // Read all constraints and collect unique variables
@@ -75,34 +72,41 @@ int main() {
             int e;
             scanf("%lld %lld %d", &i, &j, &e);
             
-            if (id_map.find(i) == id_map.end()) {
+            auto it_i = id_map.find(i);
+            if (it_i == id_map.end()) {
                 id_map[i] = next_id++;
-            }
-            if (id_map.find(j) == id_map.end()) {
-                id_map[j] = next_id++;
+                variables.emplace_back(i, next_id - 1);
             }
             
-            constraints.push_back({id_map[i], id_map[j], e});
+            auto it_j = id_map.find(j);
+            if (it_j == id_map.end()) {
+                id_map[j] = next_id++;
+                variables.emplace_back(j, next_id - 1);
+            }
+            
+            int id_i = id_map[i];
+            int id_j = id_map[j];
+            
+            if (e == 1) {
+                equality_constraints.push_back({id_i, id_j, e});
+            } else {
+                inequality_constraints.push_back({id_i, id_j, e});
+            }
         }
         
-        UnionFind uf;
-        uf.resize(next_id);
+        UnionFind uf(next_id);
         
         // Process equality constraints first
-        for (const auto& constraint : constraints) {
-            if (constraint.e == 1) {
-                uf.unite(constraint.i, constraint.j);
-            }
+        for (const auto& constraint : equality_constraints) {
+            uf.unite(constraint.i, constraint.j);
         }
         
         // Check inequality constraints
         bool possible = true;
-        for (const auto& constraint : constraints) {
-            if (constraint.e == 0) {
-                if (uf.connected(constraint.i, constraint.j)) {
-                    possible = false;
-                    break;
-                }
+        for (const auto& constraint : inequality_constraints) {
+            if (uf.connected(constraint.i, constraint.j)) {
+                possible = false;
+                break;
             }
         }
         
